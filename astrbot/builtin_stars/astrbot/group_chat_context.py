@@ -92,6 +92,7 @@ class GroupChatContext:
         image_url: str,
         image_caption_provider_id: str,
         image_caption_prompt: str,
+        bot_account_id: str | None = None,
     ) -> str:
         if not image_caption_provider_id:
             provider = await self.context.get_using_provider_async()
@@ -101,11 +102,18 @@ class GroupChatContext:
                 raise Exception(f"没有找到 ID 为 {image_caption_provider_id} 的提供商")
         if not isinstance(provider, Provider):
             raise Exception(f"提供商类型错误({type(provider)})，无法获取图片描述")
+        request_options = {}
+        if (
+            provider.provider_config.get("type") == "local_acp_harness"
+            and bot_account_id
+        ):
+            request_options["bot_account_id"] = bot_account_id
         response = await provider.text_chat(
             prompt=image_caption_prompt,
             session_id=uuid.uuid4().hex,
             image_urls=[image_url],
             persist=False,
+            **request_options,
         )
         return response.completion_text
 
@@ -213,6 +221,7 @@ class GroupChatContext:
                             url,
                             cfg["image_caption_provider_id"],
                             cfg["image_caption_prompt"],
+                            bot_account_id=event.get_self_id(),
                         )
                         parts.append(f" [Image: {caption}]")
                     except Exception as e:

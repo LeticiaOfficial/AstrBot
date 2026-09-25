@@ -509,6 +509,7 @@ class ToolLoopAgentRunner(BaseAgentRunner[TContext]):
             "abort_signal": self._abort_signal,
             "request_max_retries": self.request_max_retries,
         }
+        payload.update(self._provider_account_scope())
         if include_model:
             # For primary provider we keep explicit model selection if provided.
             payload["model"] = self.req.model
@@ -529,6 +530,18 @@ class ToolLoopAgentRunner(BaseAgentRunner[TContext]):
             resp = await self._await_or_stop(self.provider.text_chat(**payload))
             if resp is not None:
                 yield resp
+
+    def _provider_account_scope(self) -> dict[str, str]:
+        """Pass the originating bot account only to the local ACP bridge."""
+        if self.provider.provider_config.get("type") != "local_acp_harness":
+            return {}
+        event = getattr(self.run_context.context, "event", None)
+        getter = getattr(event, "get_self_id", None)
+        try:
+            account_id = str(getter()).strip() if callable(getter) else ""
+        except Exception:  # noqa: BLE001 - platform event implementations vary
+            account_id = ""
+        return {"bot_account_id": account_id} if account_id else {}
 
     async def _iter_llm_responses_with_fallback(
         self,
@@ -1427,6 +1440,7 @@ class ToolLoopAgentRunner(BaseAgentRunner[TContext]):
                         func_tool=param_subset,
                         model=self.req.model,
                         session_id=self.req.session_id,
+                        **self._provider_account_scope(),
                         extra_user_content_parts=self.req.extra_user_content_parts,
                         # tool_choice="required",
                         abort_signal=self._abort_signal,
@@ -1459,6 +1473,7 @@ class ToolLoopAgentRunner(BaseAgentRunner[TContext]):
                             func_tool=param_subset,
                             model=self.req.model,
                             session_id=self.req.session_id,
+                            **self._provider_account_scope(),
                             extra_user_content_parts=self.req.extra_user_content_parts,
                             # tool_choice="required",
                             abort_signal=self._abort_signal,

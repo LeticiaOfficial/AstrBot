@@ -506,6 +506,19 @@ def runner():
     return ToolLoopAgentRunner()
 
 
+def test_provider_account_scope_is_forwarded_only_to_local_acp(runner):
+    event = SimpleNamespace(get_self_id=lambda: "10001")
+    runner.run_context = SimpleNamespace(context=SimpleNamespace(event=event))
+    runner.provider = SimpleNamespace(
+        provider_config={"type": "local_acp_harness"}
+    )
+
+    assert runner._provider_account_scope() == {"bot_account_id": "10001"}
+
+    runner.provider = SimpleNamespace(provider_config={"type": "openai"})
+    assert runner._provider_account_scope() == {}
+
+
 def _make_large_tool_result_text() -> str:
     return "x" * 100000
 

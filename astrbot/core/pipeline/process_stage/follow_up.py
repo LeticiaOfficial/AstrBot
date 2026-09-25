@@ -29,6 +29,21 @@ class FollowUpCapture:
     target_run_id: str | None = None
 
 
+def _runner_scope_key(umo: str, event: AstrMessageEvent | None) -> str:
+    """Keep active runs separate when multiple bot accounts share one UMO."""
+    if event is None:
+        return umo
+    try:
+        platform_id = str(event.get_platform_id() or "")
+        bot_id = str(event.get_self_id() or "")
+    except Exception:
+        platform_id = ""
+        bot_id = ""
+    if not platform_id and not bot_id:
+        return umo
+    return f"{umo}\x1f{platform_id}\x1f{bot_id}"
+
+
 def _event_follow_up_text(event: AstrMessageEvent) -> str:
     text = (event.get_message_str() or "").strip()
     if text:
@@ -37,8 +52,9 @@ def _event_follow_up_text(event: AstrMessageEvent) -> str:
 
 
 def register_active_runner(umo: str, runner: AgentRunner) -> None:
-    _ACTIVE_AGENT_RUNNERS[umo] = runner
     runner_event = getattr(getattr(runner.run_context, "context", None), "event", None)
+    scope_key = _runner_scope_key(umo, runner_event)
+    _ACTIVE_AGENT_RUNNERS[scope_key] = runner
     if runner_event is not None:
         active_event_registry.register_agent_stop_callback(
             runner_event,
@@ -47,13 +63,14 @@ def register_active_runner(umo: str, runner: AgentRunner) -> None:
 
 
 def unregister_active_runner(umo: str, runner: AgentRunner) -> None:
-    if _ACTIVE_AGENT_RUNNERS.get(umo) is runner:
-        _ACTIVE_AGENT_RUNNERS.pop(umo, None)
-        runner_event = getattr(
-            getattr(runner.run_context, "context", None),
-            "event",
-            None,
-        )
+    runner_event = getattr(
+        getattr(runner.run_context, "context", None),
+        "event",
+        None,
+    )
+    scope_key = _runner_scope_key(umo, runner_event)
+    if _ACTIVE_AGENT_RUNNERS.get(scope_key) is runner:
+        _ACTIVE_AGENT_RUNNERS.pop(scope_key, None)
         if runner_event is not None:
             active_event_registry.unregister_agent_stop_callback(runner_event)
 
@@ -177,7 +194,8 @@ def try_capture_follow_up(event: AstrMessageEvent) -> FollowUpCapture | None:
     sender_id = event.get_sender_id()
     if not sender_id:
         return None
-    runner = _ACTIVE_AGENT_RUNNERS.get(event.unified_msg_origin)
+    scope_key = _runner_scope_key(event.unified_msg_origin, event)
+    runner = _ACTIVE_AGENT_RUNNERS.get(scope_key)
     if not runner:
         return None
     runner_event = getattr(getattr(runner.run_context, "context", None), "event", None)
@@ -194,10 +212,10 @@ def try_capture_follow_up(event: AstrMessageEvent) -> FollowUpCapture | None:
     if not ticket:
         return None
     # Allocate strict order at capture time (arrival order), not at wake time.
-    order_seq = _allocate_follow_up_order(event.unified_msg_origin)
+    order_seq = _allocate_follow_up_order(scope_key)
     monitor_task = asyncio.create_task(
         _monitor_follow_up_ticket(
-            event.unified_msg_origin,
+            scope_key,
             ticket,
             order_seq,
         )
@@ -208,7 +226,7 @@ def try_capture_follow_up(event: AstrMessageEvent) -> FollowUpCapture | None:
         order_seq,
     )
     return FollowUpCapture(
-        umo=event.unified_msg_origin,
+        umo=scope_key,
         ticket=ticket,
         order_seq=order_seq,
         monitor_task=monitor_task,

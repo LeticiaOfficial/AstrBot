@@ -239,10 +239,10 @@ class Main(star.Star):
                     )
 
                     if not session_curr_cid:
-                        logger.error(
-                            "当前未处于对话状态，无法主动回复，请确保 平台设置->会话隔离(unique_session) 未开启，并使用 /new 创建一个会话。",
+                        session_curr_cid = await self.context.conversation_manager.new_conversation(
+                            event.unified_msg_origin,
+                            platform_id=event.get_platform_id(),
                         )
-                        return
 
                     conv = await self.context.conversation_manager.get_conversation(
                         event.unified_msg_origin,
