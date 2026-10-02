@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import TypedDict
 
 from deprecated import deprecated
+from pydantic import NaiveDatetime
 from sqlalchemy import Index, desc
 from sqlmodel import JSON, Field, SQLModel, Text, UniqueConstraint
 
@@ -25,7 +26,8 @@ class PlatformStat(SQLModel, table=True):
     __tablename__: str = "platform_stats"
 
     id: int = Field(primary_key=True, sa_column_kwargs={"autoincrement": True})
-    timestamp: datetime = Field(nullable=False)
+    # Platform counters have always stored local wall-clock hours without a zone.
+    timestamp: NaiveDatetime = Field(nullable=False)
     platform_id: str = Field(nullable=False)
     platform_type: str = Field(nullable=False)  # such as "aiocqhttp", "slack", etc.
     count: int = Field(default=0, nullable=False)

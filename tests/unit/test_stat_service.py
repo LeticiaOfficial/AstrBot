@@ -4,7 +4,25 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from astrbot.core.db.po import PlatformStat
 from astrbot.dashboard.services.stat_service import StatService
+
+
+@pytest.mark.asyncio
+async def test_platform_counter_preserves_naive_local_time(temp_db):
+    """Platform counters retain their existing local wall-clock storage format."""
+    timestamp = datetime.now().replace(minute=0, second=0, microsecond=0)
+    async with temp_db.get_db() as session:
+        record = PlatformStat(
+            timestamp=timestamp, platform_id="qq", platform_type="aiocqhttp", count=3
+        )
+        session.add(record)
+        await session.commit()
+        await session.refresh(record)
+        assert record.timestamp.tzinfo is None
+        assert record.timestamp == timestamp
+    stats = await _make_service(temp_db).get_stat(86400)
+    assert stats["message_count"] == 3
 
 
 def _make_service(db) -> StatService:
