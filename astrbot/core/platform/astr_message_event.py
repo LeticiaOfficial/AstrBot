@@ -31,10 +31,17 @@ from astrbot.core.utils.trace import TraceSpan
 
 from .astrbot_message import AstrBotMessage, Group
 from .message_session import MessageSesion, MessageSession  # noqa
+from .outgoing_gate import guard_outgoing, guard_send_overrides
 from .platform_metadata import PlatformMetadata
 
 
 class AstrMessageEvent(abc.ABC):
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        guard_send_overrides(
+            cls, tuple(name for name in cls.__dict__ if name.startswith("send"))
+        )
+
     def __init__(
         self,
         message_str: str,
@@ -277,6 +284,7 @@ class AstrMessageEvent(abc.ABC):
             buffer = buffer[match.end() :]
         return buffer
 
+    @guard_outgoing
     async def send_streaming(
         self,
         generator: AsyncGenerator[MessageChain, None],
@@ -291,6 +299,7 @@ class AstrMessageEvent(abc.ABC):
         )
         self._has_send_oper = True
 
+    @guard_outgoing
     async def send_typing(self) -> None:
         """发送输入中状态。
 
@@ -475,6 +484,7 @@ class AstrMessageEvent(abc.ABC):
 
     """平台适配器"""
 
+    @guard_outgoing
     async def send(self, message: MessageChain) -> None:
         """发送消息到消息平台。
 

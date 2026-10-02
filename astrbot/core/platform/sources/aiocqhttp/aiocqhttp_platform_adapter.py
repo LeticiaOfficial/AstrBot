@@ -5,6 +5,7 @@ import logging
 import time
 import uuid
 from collections.abc import Awaitable
+from functools import partial
 from typing import Any, cast
 
 from aiocqhttp import CQHttp, Event
@@ -21,6 +22,7 @@ from astrbot.api.platform import (
     PlatformMetadata,
 )
 from astrbot.core.platform.astr_message_event import MessageSesion
+from astrbot.core.platform.outgoing_gate import guarded_onebot_action
 
 from ...register import register_platform_adapter
 from .aiocqhttp_message_event import *
@@ -59,6 +61,11 @@ class AiocqhttpAdapter(Platform):
             access_token=platform_config.get(
                 "ws_reverse_token",
             ),  # 以防旧版本配置不存在
+        )
+
+        # Guard the protocol boundary as plugins can access the raw client.
+        self.bot._api.call_action = partial(
+            guarded_onebot_action, self.bot._api.call_action
         )
 
         @self.bot.on_request()

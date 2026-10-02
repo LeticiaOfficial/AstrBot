@@ -8,6 +8,7 @@ from astrbot.core.config.astrbot_config import AstrBotConfig
 from astrbot.core.star.star_handler import EventType, star_handlers_registry, star_map
 from astrbot.core.utils.webhook_utils import ensure_platform_webhook_config
 
+from .outgoing_gate import configure_outgoing_gate
 from .platform import Platform, PlatformStatus
 from .register import platform_cls_map
 from .sources.webchat.webchat_adapter import WebChatAdapter
@@ -28,6 +29,7 @@ class PlatformManager:
         self._platform_tasks: dict[str, PlatformTasks] = {}
 
         self.astrbot_config = config
+        configure_outgoing_gate(config)
         self.platforms_config = config["platform"]
         self.settings = config["platform_settings"]
         """The default configuration is used here for maximum compatibility.

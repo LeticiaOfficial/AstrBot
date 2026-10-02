@@ -65,6 +65,7 @@ WEBHOOK_SUPPORTED_PLATFORMS = [
 DEFAULT_CONFIG = {
     "config_version": 3,
     "platform_settings": {
+        "outgoing_messages_enabled": False,
         "unique_session": False,
         "rate_limit": {
             "time": 60,
@@ -1125,6 +1126,7 @@ CONFIG_METADATA_2 = {
             "platform_settings": {
                 "type": "object",
                 "items": {
+                    "outgoing_messages_enabled": {"type": "bool"},
                     "unique_session": {
                         "type": "bool",
                     },
@@ -4233,6 +4235,11 @@ CONFIG_METADATA_3 = {
                         "description": "管理员 ID",
                         "type": "list",
                         "items": {"type": "string"},
+                    },
+                    "platform_settings.outgoing_messages_enabled": {
+                        "description": "允许发送消息（总开关）",
+                        "type": "bool",
+                        "hint": "默认关闭。关闭时禁止私聊、群聊、主动回复和插件后台发送；仍可接收消息和后台蒸馏。只有管理员可显式开启。",
                     },
                     "platform_settings.unique_session": {
                         "description": "隔离会话",

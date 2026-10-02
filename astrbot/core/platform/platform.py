@@ -14,6 +14,7 @@ from astrbot.core.utils.metrics import Metric
 from .astr_message_event import AstrMessageEvent
 from .astrbot_message import AstrBotMessage
 from .message_session import MessageSesion
+from .outgoing_gate import guard_outgoing, guard_send_overrides
 from .platform_metadata import PlatformMetadata
 
 
@@ -36,6 +37,18 @@ class PlatformError:
 
 
 class Platform(abc.ABC):
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        guard_send_overrides(
+            cls,
+            tuple(
+                name
+                for name in cls.__dict__
+                if name.startswith("send")
+                and name not in {"send_http_request", "send_identify"}
+            ),
+        )
+
     def __init__(self, config: dict, event_queue: Queue) -> None:
         super().__init__()
         # 平台配置
@@ -131,6 +144,7 @@ class Platform(abc.ABC):
         """得到一个平台的元数据。"""
         raise NotImplementedError
 
+    @guard_outgoing
     async def send_by_session(
         self,
         session: MessageSesion,
