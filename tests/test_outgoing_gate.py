@@ -93,6 +93,9 @@ def test_raw_onebot_sends_are_blocked_but_reads_remain_available():
             "send_private_msg",
             "send_group_msg_async",
             "send_group_forward_msg_rate_limited",
+            "upload_private_file",
+            "upload_group_file",
+            "set_group_notice",
         ):
             with pytest.raises(PermissionError):
                 await guarded_onebot_action(transport, action, message="test")

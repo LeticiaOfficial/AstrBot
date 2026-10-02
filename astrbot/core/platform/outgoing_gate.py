@@ -80,6 +80,15 @@ async def guarded_onebot_action(action_call, action: str, **params) -> Any:
         PermissionError: Sending is disabled by the administrator.
     """
     normalized = action.removesuffix("_async").removesuffix("_rate_limited")
-    if normalized.startswith("send_") and not outgoing_messages_enabled():
+    if (
+        normalized.startswith("send_")
+        or normalized
+        in {
+            "upload_group_file",
+            "upload_private_file",
+            "set_group_notice",
+            "_send_group_notice",
+        }
+    ) and not outgoing_messages_enabled():
         raise PermissionError("Outgoing messages are disabled by the administrator")
     return await action_call(action, **params)
